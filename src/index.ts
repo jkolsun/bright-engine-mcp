@@ -1,5 +1,4 @@
 import express from "express";
-import { randomUUID } from "crypto";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createServer } from "./server.js";
 
@@ -24,41 +23,20 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", server: "bright-engine-github" });
 });
 
-// Session management for stateful connections
-const transports = new Map<string, StreamableHTTPServerTransport>();
-
-// MCP endpoint — POST handles JSON-RPC messages
+// MCP endpoint — stateless mode: fresh server + transport per request
 app.post("/mcp", async (req, res) => {
   try {
-    // Check for existing session
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    let transport: StreamableHTTPServerTransport;
+    const server = createServer();
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined, // stateless
+    });
 
-    if (sessionId && transports.has(sessionId)) {
-      // Reuse existing transport
-      transport = transports.get(sessionId)!;
-    } else {
-      // Create new transport for this session
-      transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-      });
+    res.on("close", () => {
+      transport.close().catch(() => {});
+      server.close().catch(() => {});
+    });
 
-      transport.onclose = () => {
-        if (transport.sessionId) {
-          transports.delete(transport.sessionId);
-        }
-      };
-
-      // Connect a fresh MCP server to this transport
-      const server = createServer();
-      await server.connect(transport);
-
-      // Store transport by session ID after connection
-      if (transport.sessionId) {
-        transports.set(transport.sessionId, transport);
-      }
-    }
-
+    await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
   } catch (err: any) {
     console.error("MCP POST error:", err);
@@ -68,28 +46,14 @@ app.post("/mcp", async (req, res) => {
   }
 });
 
-// MCP SSE endpoint — GET for server-to-client streaming
-app.get("/mcp", async (req, res) => {
-  const sessionId = req.headers["mcp-session-id"] as string | undefined;
-  if (!sessionId || !transports.has(sessionId)) {
-    res.status(400).json({ error: "No active session. Send a POST first." });
-    return;
-  }
-  const transport = transports.get(sessionId)!;
-  await transport.handleRequest(req, res);
+// GET /mcp — not needed in stateless mode
+app.get("/mcp", (_req, res) => {
+  res.status(405).json({ error: "Method not allowed in stateless mode" });
 });
 
-// MCP session cleanup — DELETE
-app.delete("/mcp", async (req, res) => {
-  const sessionId = req.headers["mcp-session-id"] as string | undefined;
-  if (!sessionId || !transports.has(sessionId)) {
-    res.status(404).json({ error: "Session not found" });
-    return;
-  }
-  const transport = transports.get(sessionId)!;
-  await transport.close();
-  transports.delete(sessionId);
-  res.status(200).json({ status: "session closed" });
+// DELETE /mcp — not needed in stateless mode
+app.delete("/mcp", (_req, res) => {
+  res.status(405).json({ error: "Method not allowed in stateless mode" });
 });
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
