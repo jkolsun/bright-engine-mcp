@@ -1,5 +1,5 @@
 # Build stage — install all deps (including typescript) and compile
-FROM node:20-alpine AS build
+FROM node:20-slim AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -8,7 +8,7 @@ COPY src ./src
 RUN npx tsc
 
 # Production stage — only runtime deps
-FROM node:20-alpine
+FROM node:20-slim
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
