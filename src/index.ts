@@ -1,7 +1,7 @@
 import express from "express";
 import { randomUUID } from "crypto";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { server } from "./server.js";
+import { createServer } from "./server.js";
 
 const app = express();
 app.use(express.json());
@@ -49,7 +49,8 @@ app.post("/mcp", async (req, res) => {
         }
       };
 
-      // Connect the MCP server to this transport
+      // Connect a fresh MCP server to this transport
+      const server = createServer();
       await server.connect(transport);
 
       // Store transport by session ID after connection
