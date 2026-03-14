@@ -19,26 +19,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Auth middleware — Bearer token check against MCP_API_KEY
-function authMiddleware(
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-): void {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    res.status(401).json({ error: "Missing or invalid Authorization header" });
-    return;
-  }
-  const token = authHeader.slice(7);
-  if (token !== process.env.MCP_API_KEY) {
-    res.status(401).json({ error: "Invalid API key" });
-    return;
-  }
-  next();
-}
-
-// Health check — no auth required
+// Health check
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", server: "bright-engine-github" });
 });
@@ -47,7 +28,7 @@ app.get("/health", (_req, res) => {
 const transports = new Map<string, StreamableHTTPServerTransport>();
 
 // MCP endpoint — POST handles JSON-RPC messages
-app.post("/mcp", authMiddleware, async (req, res) => {
+app.post("/mcp", async (req, res) => {
   try {
     // Check for existing session
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
@@ -87,7 +68,7 @@ app.post("/mcp", authMiddleware, async (req, res) => {
 });
 
 // MCP SSE endpoint — GET for server-to-client streaming
-app.get("/mcp", authMiddleware, async (req, res) => {
+app.get("/mcp", async (req, res) => {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
   if (!sessionId || !transports.has(sessionId)) {
     res.status(400).json({ error: "No active session. Send a POST first." });
@@ -98,7 +79,7 @@ app.get("/mcp", authMiddleware, async (req, res) => {
 });
 
 // MCP session cleanup — DELETE
-app.delete("/mcp", authMiddleware, async (req, res) => {
+app.delete("/mcp", async (req, res) => {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
   if (!sessionId || !transports.has(sessionId)) {
     res.status(404).json({ error: "Session not found" });
