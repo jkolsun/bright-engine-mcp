@@ -6,6 +6,19 @@ import { server } from "./server.js";
 const app = express();
 app.use(express.json());
 
+// CORS — allow claude.ai and other browser clients
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Authorization, Content-Type, mcp-session-id");
+  res.header("Access-Control-Expose-Headers", "mcp-session-id");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
 // Auth middleware — Bearer token check against MCP_API_KEY
 function authMiddleware(
   req: express.Request,
