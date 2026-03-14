@@ -1,0 +1,22 @@
+{
+  "name": "bright-engine-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MCP server for read-only GitHub access to bright_engine repo",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "npx tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@octokit/rest": "^21.0.0",
+    "express": "^4.21.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}
