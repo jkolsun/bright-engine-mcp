@@ -1,6 +1,7 @@
 import express from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createServer } from "./server.js";
+import { initRepo } from "./code-search.js";
 
 const app = express();
 app.use(express.json());
@@ -57,8 +58,18 @@ app.delete("/mcp", (_req, res) => {
 });
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, "0.0.0.0", async () => {
   console.log(`bright-engine-mcp listening on port ${PORT}`);
   console.log(`Health: http://localhost:${PORT}/health`);
   console.log(`MCP:    http://localhost:${PORT}/mcp`);
+
+  // Pre-warm the local clone so the first searchCode call doesn't pay clone
+  // cost. Failure is non-fatal — searchCode will retry on demand and the
+  // legacy tools (getFile/listDir/searchFiles) work via the GitHub API
+  // regardless of clone state.
+  try {
+    await initRepo();
+  } catch (err: any) {
+    console.error(`[startup] Initial repo clone failed — searchCode will retry on first call: ${err.message}`);
+  }
 });
