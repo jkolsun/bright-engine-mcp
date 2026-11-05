@@ -30,6 +30,18 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", server: "bright-engine-github" });
 });
 
+// 2026-11-05 — no OAuth here. claude.ai probes /.well-known/oauth-* when a
+// connector does not answer a plain initialize; every such path is a clean 404
+// (never the 401 the bearer guard used to give), so it never tries a login.
+app.all("/.well-known/*", (_req, res) => {
+  res.status(404).end();
+});
+
+// A plain root page, so the domain root is never an auth refusal in a browser.
+app.get("/", (_req, res) => {
+  res.status(200).type("text/plain").send("bright-engine-mcp ok");
+});
+
 // MCP endpoint — stateless mode: fresh server + transport per request
 mcp.post("/mcp", async (req, res) => {
   try {
